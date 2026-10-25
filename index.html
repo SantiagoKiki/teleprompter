@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Teleprompter</title>
+  <meta name="description" content="Teleprompter horizontal, gratis y sin conexión.">
+  <meta name="theme-color" content="#0d0e11">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main id="editor" class="editor">
+    <header class="editor__header">
+      <h1>
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 12h8M16 12h2"/></svg>
+        Teleprompter
+      </h1>
+      <p>Pega tu guion, ajusta la velocidad y presiona Iniciar. El texto avanza de derecha a izquierda.</p>
+    </header>
+
+    <div class="editor__grid">
+      <section class="panel panel--script" aria-labelledby="script-title">
+        <div class="panel__head">
+          <h2 id="script-title" class="panel__title"><label for="script">Guion</label></h2>
+          <div class="panel__actions">
+            <button type="button" id="open-file" class="btn">Abrir .txt</button>
+            <input type="file" id="file-input" accept=".txt,text/plain" hidden>
+            <button type="button" id="clear-script" class="btn">Borrar</button>
+          </div>
+        </div>
+        <textarea id="script" class="script" spellcheck="true" placeholder="Escribe o pega aquí tu texto… También puedes arrastrar un archivo .txt."></textarea>
+        <p id="stats" class="stats" aria-live="polite"></p>
+      </section>
+
+      <aside class="panel panel--settings" aria-labelledby="settings-title">
+        <h2 id="settings-title" class="panel__title">Ajustes</h2>
+
+        <div class="field">
+          <div class="field__label"><label for="speed">Velocidad</label><output id="speed-out" for="speed"></output></div>
+          <input type="range" id="speed">
+          <p class="field__hint">Palabras por minuto. Hablando normal: 130–160.</p>
+        </div>
+
+        <div class="field">
+          <div class="field__label"><label for="font-size">Tamaño de letra</label><output id="font-size-out" for="font-size"></output></div>
+          <input type="range" id="font-size">
+        </div>
+
+        <div class="field">
+          <div class="field__label"><label for="marker">Línea de lectura</label><output id="marker-out" for="marker"></output></div>
+          <input type="range" id="marker">
+          <p class="field__hint">Distancia desde el borde izquierdo de la pantalla.</p>
+        </div>
+
+        <div class="field">
+          <div class="field__label"><label for="band-position">Posición de la franja</label></div>
+          <select id="band-position">
+            <option value="top">Arriba (cerca de la cámara)</option>
+            <option value="center">Centro</option>
+            <option value="bottom">Abajo</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field__label" id="theme-label">Colores</div>
+          <div class="swatches" role="radiogroup" aria-labelledby="theme-label">
+            <label class="swatch" style="--swatch: #f4f4f4"><input type="radio" name="theme" value="classic"><span>Blanco</span></label>
+            <label class="swatch" style="--swatch: #ffcc3d"><input type="radio" name="theme" value="amber"><span>Ámbar</span></label>
+            <label class="swatch" style="--swatch: #7dffa0"><input type="radio" name="theme" value="green"><span>Verde</span></label>
+          </div>
+        </div>
+
+        <label class="check"><input type="checkbox" id="mirror"> <span>Modo espejo <small>(para cristal de teleprompter)</small></span></label>
+        <label class="check"><input type="checkbox" id="countdown-toggle"> <span>Cuenta regresiva de 3 segundos</span></label>
+
+        <button type="button" id="start" class="btn btn--primary btn--block">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+          Iniciar
+        </button>
+        <p class="field__hint field__hint--center">o <kbd>Ctrl</kbd> + <kbd>Enter</kbd></p>
+
+        <details class="shortcuts">
+          <summary>Atajos de teclado</summary>
+          <dl>
+            <dt><kbd>Espacio</kbd></dt><dd>Reproducir / pausar</dd>
+            <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Más / menos velocidad</dd>
+            <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Palabra anterior / siguiente (con <kbd>Shift</kbd>: 10 palabras)</dd>
+            <dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Tamaño de letra</dd>
+            <dt><kbd>R</kbd></dt><dd>Volver al inicio</dd>
+            <dt><kbd>M</kbd></dt><dd>Modo espejo</dd>
+            <dt><kbd>F</kbd></dt><dd>Pantalla completa</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Volver al editor</dd>
+            <dt>Rueda / arrastrar</dt><dd>Mover el texto a mano</dd>
+            <dt>Clic / toque</dt><dd>Reproducir / pausar</dd>
+          </dl>
+        </details>
+      </aside>
+    </div>
+  </main>
+
+  <div id="prompter" class="prompter" hidden>
+    <div id="stage" class="stage">
+      <div id="band" class="band">
+        <div id="track" class="track"></div>
+        <div class="marker" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div id="countdown" class="countdown" hidden aria-live="assertive"></div>
+
+    <div id="hud" class="hud">
+      <div class="progress" aria-hidden="true"><div id="progress-bar" class="progress__bar"></div></div>
+      <div class="hud__row">
+        <div class="hud__group">
+          <button type="button" id="btn-back" class="hud-btn" title="Volver al editor (Esc)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="stroke"><path d="M15 5l-7 7 7 7"/></svg>
+            <span class="btn-label">Editar</span>
+          </button>
+        </div>
+
+        <div class="hud__group">
+          <button type="button" id="btn-restart" class="hud-btn hud-btn--icon" title="Volver al inicio (R)" aria-label="Volver al inicio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="2.5" height="14" rx="1"/><path d="M19 6.2v11.6a1 1 0 0 1-1.55.83L9.5 13.2a1.4 1.4 0 0 1 0-2.4l7.95-5.43A1 1 0 0 1 19 6.2z"/></svg>
+          </button>
+          <button type="button" id="btn-play" class="hud-btn hud-btn--play" data-state="paused">
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          </button>
+          <span id="time-left" class="hud__time" title="Tiempo restante"></span>
+        </div>
+
+        <div class="hud__group">
+          <div class="stepper" role="group" aria-label="Velocidad">
+            <button type="button" id="btn-slower" title="Menos velocidad (↓)" aria-label="Menos velocidad">−</button>
+            <span id="hud-speed"></span>
+            <button type="button" id="btn-faster" title="Más velocidad (↑)" aria-label="Más velocidad">+</button>
+          </div>
+          <div class="stepper" role="group" aria-label="Tamaño de letra">
+            <button type="button" id="btn-smaller" title="Letra más pequeña (−)" aria-label="Letra más pequeña">A−</button>
+            <button type="button" id="btn-bigger" title="Letra más grande (+)" aria-label="Letra más grande">A+</button>
+          </div>
+          <button type="button" id="btn-mirror" class="hud-btn" aria-pressed="false" title="Modo espejo (M)">Espejo</button>
+          <button type="button" id="btn-fullscreen" class="hud-btn hud-btn--icon" aria-pressed="false" title="Pantalla completa (F)" aria-label="Pantalla completa">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="stroke"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
